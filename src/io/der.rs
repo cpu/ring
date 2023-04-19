@@ -94,6 +94,29 @@ pub fn read_tag_and_get_value<'a>(
             }
             combined
         }
+        // TODO(cpu): if we want to keep read_tag_and_get_value as-is while supporting larger
+        //            DER lengths we should clean up the duplicative logic for 0x82, 0x83, 0x84.
+        0x83 => {
+            let second_byte = usize::from(input.read_byte()?);
+            let third_byte = usize::from(input.read_byte()?);
+            let fourth_byte = usize::from(input.read_byte()?);
+            let combined = (second_byte << 16) | (third_byte << 8) | fourth_byte;
+            if combined < 65536 {
+                return Err(error::Unspecified); // Not the canonical encoding.
+            }
+            combined
+        }
+        0x84 => {
+            let second_byte = usize::from(input.read_byte()?);
+            let third_byte = usize::from(input.read_byte()?);
+            let fourth_byte = usize::from(input.read_byte()?);
+            let fifth_byte = usize::from(input.read_byte()?);
+            let combined = (second_byte << 24) | (third_byte << 16) | (fourth_byte << 8) | fifth_byte;
+            if combined < 16777216 {
+                return Err(error::Unspecified); // Not the canonical encoding.
+            }
+            combined
+        }
         _ => {
             return Err(error::Unspecified); // We don't support longer lengths.
         }
